@@ -1,5 +1,6 @@
 library(tidyverse)
 
+# --- Data ---
 load_gene_info = function() read_csv('data/gene-info.csv')
 
 load_correlations = function () read_csv('data/corrs.csv')
@@ -26,16 +27,18 @@ tom = function(corr_matrix, beta) {
 }
 
 # --- Scale-free topology ---
-scale_free_r2 = function(m) {
-  k = connectivity(m)
-  binned_k = hist(k, plot=FALSE)
+k_distribution = function(a) {
+  k = connectivity(a)
+  binned_k = hist(k, plot = FALSE, breaks=50)
   p_k = binned_k$counts / sum(binned_k$counts)
 
   nonzero = p_k > 0
-  p_k[nonzero] -> p_k
-  use_k = binned_k$mids[nonzero]
+  list(p_k = log10(p_k[nonzero]), use_k = log10(binned_k$mids[nonzero]))
+}
 
-  cor(log10(p_k), log10(use_k))^2
+scale_free_r2 = function(a) {
+  k_dist = k_distribution(a)
+  cor(lk_dist$p_k, k_dist$use_k)^2
 }
 
 tabulate_betas = function(corr_matrix, betas = 1:20) {
@@ -43,6 +46,18 @@ tabulate_betas = function(corr_matrix, betas = 1:20) {
     a = adjacency(corr_matrix, beta)
     tibble(beta = beta, r2 = scale_free_r2(a), mean_k = mean(connectivity(a)))
   })
+}
+
+plot_log_log = function(corr_matrix, beta) {
+  a = adjacency(corr_matrix, beta)
+  k_dist = k_distribution(a)
+
+  x = k_dist$use_k
+  y = k_dist$p_k
+
+  plot(x, y)
+  abline(lm(y ~ x), col = "red")
+  k_dist
 }
 
 # --- Clustering ---
